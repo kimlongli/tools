@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -51,7 +52,7 @@ func main() {
 	r := gin.Default()
 
 	r.GET("/current-port", func(ctx *gin.Context) {
-
+		ctx.JSON(http.StatusOK, fmt.Sprintf("current port is %v"))
 	})
 
 	r.GET("/change-port", func(c *gin.Context) {
