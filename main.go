@@ -54,7 +54,7 @@ func main() {
 
 	})
 
-	r.GET("/chang-port", func(c *gin.Context) {
+	r.GET("/change-port", func(c *gin.Context) {
 		// 每分钟只能运行一次
 		if time.Now().Before(lastSuccessRunTime.Add(time.Minute)) {
 			c.JSON(http.StatusInternalServerError, "fuck you!!! you can only change the port once every minute!!")

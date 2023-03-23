@@ -1,2 +1,3 @@
+sudo killall main
 go build .
-setsid ./main > ginlog.txt 2>&1 &
+sudo setsid ./main > ginlog.txt 2>&1 &
