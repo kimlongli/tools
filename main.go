@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +24,8 @@ var (
 	secret             string
 	lastSuccessRunTime time.Time
 	currentPort        string
+
+	rePort = regexp.MustCompile("-p (?P<port>\\d+):4000")
 )
 
 type ChangePortRequest struct {
@@ -56,7 +59,19 @@ func main() {
 	r := gin.Default()
 
 	r.GET("/current-port", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, fmt.Sprintf("current port is %v", currentPort))
+		content, err := os.ReadFile("./launch.sh")
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, "fail to open launch.sh")
+			return
+		}
+
+		matches := rePort.FindStringSubmatch(string(content))
+		if len(matches) <= 1 {
+			ctx.JSON(http.StatusInternalServerError, "fuck you!!! port not found")
+			return
+		}
+
+		ctx.JSON(http.StatusOK, fmt.Sprintf("current port is %v", matches[1]))
 	})
 
 	r.GET("/change-port", func(c *gin.Context) {
@@ -136,9 +151,7 @@ func main() {
 		lastSuccessRunTime = time.Now()
 		currentPort = newPort
 
-		c.JSON(http.StatusOK, gin.H{
-			"new_port": newPort,
-		})
+		c.JSON(http.StatusOK, fmt.Sprintf("new port: %v", newPort))
 	})
 	r.Run("0.0.0.0:19090")
 
