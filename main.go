@@ -42,8 +42,12 @@ func randString(n int) string {
 func main() {
 	rand.Seed(time.Now().Unix())
 
-	// 随机生成字符串作为secret
-	secret = randString(32)
+	secret = os.Getenv("GIN_SECRET")
+
+	if secret == "" {
+		// 随机生成字符串作为secret
+		secret = randString(32)
+	}
 
 	log.Printf("secret: %v", secret)
 
@@ -99,20 +103,24 @@ func main() {
 		file.Close()
 
 		cmd := exec.Command("docker", "ps", "-q")
-		containerID, err := cmd.CombinedOutput()
+		containerIDBytes, err := cmd.CombinedOutput()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 			return
 		}
+
+		containerID := strings.TrimSpace(string(containerIDBytes))
 		log.Printf("old container id: %s", containerID)
 
-		// kill掉当前docker
-		cmd = exec.Command("docker", "kill", strings.TrimSpace(string(containerID)))
-		output, err := cmd.CombinedOutput()
-		log.Printf("docker kill output: %s", output)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-			return
+		if containerID != "" {
+			// kill掉当前docker
+			cmd = exec.Command("docker", "kill", containerID)
+			output, err := cmd.CombinedOutput()
+			log.Printf("docker kill output: %s", output)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
 		}
 
 		// 重新启动docker

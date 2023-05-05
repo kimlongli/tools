@@ -1,2 +1,2 @@
 docker image build -t bs_build .
-docker  run -it -d -p {{port}}:4000/udp  bs_build
+docker  run -it -d --restart=always -p {{port}}:4000/udp  bs_build
