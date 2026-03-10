@@ -1,2 +1,2 @@
 go build .
-sudo setsid ./changeport > ginlog.txt 2>&1 &
+setsid ./changeport > ginlog.txt 2>&1 &
