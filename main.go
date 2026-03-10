@@ -42,13 +42,82 @@ func randString(n int) string {
 	return string(b)
 }
 
+const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>端口查询</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+		body {
+			min-height: 100vh;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+		}
+		.container {
+			background: white;
+			border-radius: 20px;
+			padding: 40px 50px;
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+			text-align: center;
+			max-width: 400px;
+			width: 90%;
+		}
+		.title {
+			font-size: 24px;
+			color: #333;
+			margin-bottom: 30px;
+			font-weight: 600;
+		}
+		.port-display {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			font-size: 48px;
+			font-weight: bold;
+			padding: 20px;
+			border-radius: 12px;
+			margin-bottom: 20px;
+			letter-spacing: 2px;
+			box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+		}
+		.label {
+			color: #888;
+			font-size: 14px;
+			margin-bottom: 8px;
+		}
+		.hint {
+			color: #aaa;
+			font-size: 12px;
+			margin-top: 20px;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="title">当前端口</div>
+		<div class="label">Port</div>
+		<div class="port-display">{{.Port}}</div>
+		<div class="hint">每分钟可更换一次端口</div>
+	</div>
+</body>
+</html>
+`
+
 func main() {
 	rand.Seed(time.Now().Unix())
 
 	secret = os.Getenv("GIN_SECRET")
 
 	if secret == "" {
-		// 随机生成字符串作为secret
 		secret = randString(32)
 	}
 
@@ -71,11 +140,13 @@ func main() {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, fmt.Sprintf("current port is %v", matches[1]))
+		port := matches[1]
+		html := strings.Replace(htmlTemplate, "{{.Port}}", port, 1)
+		ctx.Header("Content-Type", "text/html; charset=utf-8")
+		ctx.String(http.StatusOK, html)
 	})
 
 	r.GET("/change-port", func(c *gin.Context) {
-		// 每分钟只能运行一次
 		if time.Now().Before(lastSuccessRunTime.Add(time.Minute)) {
 			c.JSON(http.StatusInternalServerError, "fuck you!!! you can only change the port once every minute!!")
 			return
@@ -88,13 +159,11 @@ func main() {
 			return
 		}
 
-		// 判断密码是否正确
 		if req.Secret != secret {
 			c.JSON(http.StatusInternalServerError, "fuck you!!! the secret is wrong!!")
 			return
 		}
 
-		// 读取模板文件
 		content, err := os.ReadFile("launch.sh.template")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
@@ -102,13 +171,10 @@ func main() {
 		}
 		contentStr := string(content)
 
-		// 随机生成port
 		newPort := strconv.Itoa(10000 + rand.Intn(2000))
 
-		// 写入新的port到模板里
 		contentStr = strings.ReplaceAll(contentStr, "{{port}}", newPort)
 
-		// 写入到launch.sh
 		file, err := os.OpenFile("launch.sh", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0744)
 		_, err = file.WriteString(contentStr)
 		if err != nil {
@@ -128,7 +194,6 @@ func main() {
 		log.Printf("old container id: %s", containerID)
 
 		if containerID != "" {
-			// kill掉当前docker
 			cmd = exec.Command("docker", "kill", containerID)
 			output, err := cmd.CombinedOutput()
 			log.Printf("docker kill output: %s", output)
@@ -138,7 +203,6 @@ func main() {
 			}
 		}
 
-		// 重新启动docker
 		cmd = exec.Command("bash", "./launch.sh")
 		err = cmd.Run()
 		if err != nil {
